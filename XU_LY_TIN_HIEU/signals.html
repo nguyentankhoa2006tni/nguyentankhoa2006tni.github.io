@@ -1,0 +1,496 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Biểu diễn Tín hiệu Rời rạc</title>
+
+  <!-- Font chữ đẹp từ Google: Inter (văn bản) + JetBrains Mono (số/code) -->
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet"/>
+
+  <style>
+    /* ══════════════════════════════════════════════
+       BẢNG MÀU (CSS Variables)
+       Dùng var(--tên) ở bất kỳ đâu để tái sử dụng màu
+    ══════════════════════════════════════════════ */
+    :root {
+      --bg:      #0f1117;   /* màu nền tổng thể — xám đen đậm */
+      --surface: #1a1d2e;   /* màu nền tab button */
+      --card:    #1e2235;   /* màu nền mỗi card đồ thị */
+      --border:  #2d3154;   /* màu viền nhạt */
+      --accent1: #7c6af7;   /* tím — màu nhấn chính (tab active, tiêu đề) */
+      --accent2: #46d9b1;   /* xanh ngọc — màu công thức, giá trị ≠ 0 */
+      --accent3: #f7836a;   /* cam đỏ — màu của tín hiệu δ(n-2), r(n-1) */
+      --accent4: #f7c36a;   /* vàng — màu nhãn n trên bảng dãy số */
+      --text:    #e8eaf6;   /* trắng nhạt — chữ thông thường */
+      --muted:   #8892b0;   /* xám nhạt — chữ phụ */
+      --glow:    rgba(124,106,247,.25); /* ánh sáng tím khi hover */
+    }
+
+    /* Reset mặc định của trình duyệt */
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: 'Inter', sans-serif;
+      min-height: 100vh;
+      padding: 2rem 1rem;
+    }
+
+    /* ── Phần tiêu đề trang ── */
+    header { text-align: center; margin-bottom: 2.5rem; }
+    header h1 {
+      font-size: clamp(1.4rem, 3vw, 2rem); /* clamp: tự co giãn theo màn hình */
+      font-weight: 700;
+      /* Gradient text: chữ tô màu chuyển từ tím sang xanh ngọc */
+      background: linear-gradient(135deg, var(--accent1), var(--accent2));
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      margin-bottom: .4rem;
+    }
+    header p { color: var(--muted); font-size: .9rem; }
+
+    /* ── Thanh chọn tab (2.1a / 2.1b) ── */
+    .tab-bar {
+      display: flex;
+      justify-content: center;
+      gap: .8rem;
+      margin-bottom: 2rem;
+    }
+    .tab-btn {
+      background: var(--surface);
+      border: 1.5px solid var(--border);
+      color: var(--muted);
+      border-radius: 8px;
+      padding: .5rem 1.6rem;
+      cursor: pointer;
+      font-family: 'Inter', sans-serif;
+      font-size: .9rem;
+      font-weight: 500;
+      transition: all .25s;  /* hiệu ứng chuyển màu mượt */
+    }
+    /* Khi tab đang chọn hoặc hover: đổi màu + phát sáng */
+    .tab-btn.active, .tab-btn:hover {
+      border-color: var(--accent1);
+      color: var(--accent1);
+      background: rgba(124,106,247,.08);
+      box-shadow: 0 0 12px var(--glow);
+    }
+
+    /* ── Lưới các card đồ thị: tự động chia cột ── */
+    .grid {
+      display: grid;
+      /* auto-fit: tự thêm cột; minmax: mỗi cột tối thiểu 420px */
+      grid-template-columns: repeat(auto-fit, minmax(420px, 1fr));
+      gap: 1.5rem;
+      max-width: 1400px;
+      margin: 0 auto;
+    }
+
+    /* ── Mỗi card chứa 1 tín hiệu ── */
+    .card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 1.4rem 1.4rem 1.2rem;
+      transition: box-shadow .3s;
+      display: none; /* Mặc định ẩn, chỉ hiện khi có class .visible */
+    }
+    .card.visible { display: block; }  /* Tab nào được chọn thì card đó hiện */
+    .card:hover { box-shadow: 0 0 20px var(--glow); }
+
+    /* Tên tín hiệu (ví dụ: δ(n+2)) */
+    .card-title { font-size: 1rem; font-weight: 600; color: var(--text); margin-bottom: .25rem; }
+
+    /* Công thức toán học */
+    .card-formula {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: .78rem;
+      color: var(--accent2);
+      margin-bottom: 1rem;
+    }
+
+    canvas { display: block; } /* Loại bỏ khoảng trắng dưới canvas mặc định */
+
+    /* ── Bảng dãy số x[n] ── */
+    .seq-wrap { margin-top: .9rem; overflow-x: auto; } /* overflow-x: cuộn ngang nếu bảng dài */
+    table { border-collapse: collapse; font-family: 'JetBrains Mono', monospace; font-size: .75rem; width: 100%; }
+    th, td { border: 1px solid var(--border); padding: .3rem .55rem; text-align: center; }
+    th { background: rgba(124,106,247,.15); color: var(--accent1); } /* Header: nền tím nhạt */
+    td { color: var(--muted); }
+    td.nonzero { color: var(--accent2); font-weight: 700; } /* Tô nổi bật giá trị ≠ 0 */
+    td.n-label { color: var(--accent4); }                   /* Nhãn n màu vàng */
+  </style>
+</head>
+<body>
+
+<!-- ══════════════════════════════════════════════
+     GIAO DIỆN HTML
+══════════════════════════════════════════════ -->
+
+<header>
+  <h1>&#x1F4CA; Biểu diễn Tín hiệu Rời rạc</h1>
+  <p>Dạng dãy số và đồ thị (stem plot) — Xử lý tín hiệu số</p>
+</header>
+
+<!-- Thanh tab: onclick gọi hàm switchTab() với tên tab và nút được click -->
+<div class="tab-bar">
+  <button class="tab-btn active" onclick="switchTab('a', this)">2.1a — &#948; &amp; u</button>
+  <button class="tab-btn"       onclick="switchTab('b', this)">2.1b — r &amp; rect&#8325;</button>
+</div>
+
+<!-- Container rỗng, các card sẽ được tạo động bằng JavaScript -->
+<div class="grid" id="grid"></div>
+
+
+<script>
+/* ══════════════════════════════════════════════
+   PHẦN 1: ĐỊNH NGHĨA CÁC HÀM TÍN HIỆU RỜI RẠC
+   Mỗi hàm nhận vào n (số nguyên) và trả ra x[n]
+══════════════════════════════════════════════ */
+
+/**
+ * Xung đơn vị δ(n): bằng 1 khi n=0, bằng 0 khi n≠0
+ * Dịch: δ(n+2) → gọi delta(n+2), nghĩa là đỉnh tại n = -2
+ */
+const delta = n => (n === 0 ? 1 : 0);
+
+/**
+ * Bước nhảy đơn vị u(n): bằng 1 khi n≥0, bằng 0 khi n<0
+ * Dịch: u(n+3) → gọi unitStep(n+3), bắt đầu từ n = -3
+ */
+const unitStep = n => (n >= 0 ? 1 : 0);
+
+/**
+ * Tín hiệu ramp r(n) = n·u(n): tăng tuyến tính từ n=0
+ * Dịch: r(n-1) → gọi ramp(n-1), bắt đầu tăng từ n = 1
+ */
+const ramp = n => (n >= 0 ? n : 0);
+
+/**
+ * Cửa sổ chữ nhật rect_N(n): bằng 1 trong N mẫu liên tiếp từ n=0
+ * Tương đương: u(n) - u(n-N)
+ * Dịch: rect5(n-3) → gọi rect(5, n-3), cửa sổ từ n=3 đến n=7
+ */
+const rect = (N, n) => (n >= 0 && n < N ? 1 : 0);
+
+
+/* ══════════════════════════════════════════════
+   PHẦN 2: CẤU HÌNH CÁC TÍN HIỆU CẦN VẼ
+   Mỗi object = 1 tín hiệu, chứa:
+     id      — định danh duy nhất (dùng cho canvas id)
+     title   — tên hiển thị trên card
+     formula — công thức/giải thích
+     color   — màu của stem và dot
+     nRange  — phạm vi n cần vẽ [nMin, nMax]
+     fn      — hàm tính x[n] theo n
+     tab     — thuộc tab 'a' hay 'b'
+══════════════════════════════════════════════ */
+const SIGNALS = {
+  a: [
+    {
+      id: 'd_np2', tab: 'a',
+      title: 'δ(n+2)',
+      formula: 'x[n] = δ(n+2)  →  bằng 1 tại n = −2, bằng 0 còn lại',
+      color: '#7c6af7',          // tím
+      nRange: [-5, 5],
+      fn: n => delta(n + 2)      // dịch trái 2: đỉnh tại n = -2
+    },
+    {
+      id: 'd_nm2', tab: 'a',
+      title: 'δ(n−2)',
+      formula: 'x[n] = δ(n−2)  →  bằng 1 tại n = +2, bằng 0 còn lại',
+      color: '#f7836a',          // cam đỏ
+      nRange: [-5, 5],
+      fn: n => delta(n - 2)      // dịch phải 2: đỉnh tại n = +2
+    },
+    {
+      id: 'u_np3', tab: 'a',
+      title: 'u(n+3)',
+      formula: 'x[n] = u(n+3)  →  bằng 1 với mọi n ≥ −3',
+      color: '#46d9b1',          // xanh ngọc
+      nRange: [-6, 6],
+      fn: n => unitStep(n + 3)   // dịch trái 3: bật từ n = -3
+    },
+    {
+      id: 'u_nm3', tab: 'a',
+      title: 'u(n−3)',
+      formula: 'x[n] = u(n−3)  →  bằng 1 với mọi n ≥ +3',
+      color: '#f7c36a',          // vàng
+      nRange: [-6, 6],
+      fn: n => unitStep(n - 3)   // dịch phải 3: bật từ n = +3
+    }
+  ],
+  b: [
+    {
+      id: 'r_np1', tab: 'b',
+      title: 'r(n+1)',
+      formula: 'x[n] = r(n+1) = (n+1)·u(n+1)  →  tăng từ n = −1',
+      color: '#7c6af7',
+      nRange: [-3, 7],
+      fn: n => ramp(n + 1)       // dịch trái 1: bắt đầu tăng từ n = -1
+    },
+    {
+      id: 'r_nm1', tab: 'b',
+      title: 'r(n−1)',
+      formula: 'x[n] = r(n−1) = (n−1)·u(n−1)  →  tăng từ n = +1',
+      color: '#f7836a',
+      nRange: [-3, 7],
+      fn: n => ramp(n - 1)       // dịch phải 1: bắt đầu tăng từ n = +1
+    },
+    {
+      id: 'r5_n', tab: 'b',
+      title: 'rect₅(n)',
+      formula: 'x[n] = u(n) − u(n−5)  →  bằng 1 với 0 ≤ n ≤ 4',
+      color: '#46d9b1',
+      nRange: [-3, 9],
+      fn: n => rect(5, n)        // cửa sổ 5 mẫu: n = 0, 1, 2, 3, 4
+    },
+    {
+      id: 'r5_nm3', tab: 'b',
+      title: 'rect₅(n−3)',
+      formula: 'x[n] = u(n−3) − u(n−8)  →  bằng 1 với 3 ≤ n ≤ 7',
+      color: '#f7c36a',
+      nRange: [-1, 11],
+      fn: n => rect(5, n - 3)    // cửa sổ dịch phải 3: n = 3, 4, 5, 6, 7
+    }
+  ]
+};
+
+
+/* ══════════════════════════════════════════════
+   PHẦN 3: TẠO CARD HTML ĐỘNG
+   Duyệt qua SIGNALS, tạo card + canvas + bảng dãy số
+   rồi chèn vào <div id="grid">
+══════════════════════════════════════════════ */
+function buildCards() {
+  const grid = document.getElementById('grid');
+
+  ['a', 'b'].forEach(tab => {
+    SIGNALS[tab].forEach(sig => {
+
+      // 1) Tạo mảng n từ nRange[0] đến nRange[1]
+      const ns = [];
+      for (let n = sig.nRange[0]; n <= sig.nRange[1]; n++) ns.push(n);
+
+      // 2) Tính x[n] tương ứng cho mỗi n
+      const xs = ns.map(sig.fn);
+
+      // 3) Tạo các ô HTML cho bảng dãy số
+      //    n-label: hàng n (màu vàng)
+      //    nonzero: tô nổi bật ô có giá trị ≠ 0
+      const nCells = ns.map(n => `<td class="n-label">${n}</td>`).join('');
+      const xCells = xs.map(x => `<td class="${x !== 0 ? 'nonzero' : ''}">${x}</td>`).join('');
+
+      // 4) Tạo phần tử card
+      const card = document.createElement('div');
+      card.className  = 'card';
+      card.dataset.tab = tab;          // dùng để ẩn/hiện theo tab
+      card.id         = 'card_' + sig.id;
+
+      card.innerHTML = `
+        <div class="card-title">${sig.title}</div>
+        <div class="card-formula">${sig.formula}</div>
+
+        <!-- Canvas: nơi JavaScript sẽ vẽ đồ thị stem plot -->
+        <canvas id="cv_${sig.id}" height="180"></canvas>
+
+        <!-- Bảng dãy số -->
+        <div class="seq-wrap">
+          <table>
+            <tr><th>n</th>${nCells}</tr>
+            <tr><th>x[n]</th>${xCells}</tr>
+          </table>
+        </div>`;
+
+      grid.appendChild(card);
+
+      // 5) Vẽ đồ thị sau khi card đã được chèn vào DOM (dùng setTimeout để đợi render)
+      setTimeout(() => drawStem(sig, ns, xs), 20);
+    });
+  });
+}
+
+
+/* ══════════════════════════════════════════════
+   PHẦN 4: VẼ ĐỒ THỊ STEM PLOT TRÊN CANVAS
+   Stem plot: mỗi mẫu n có một "cọc" thẳng đứng
+              và một chấm tròn ở đỉnh
+══════════════════════════════════════════════ */
+function drawStem(sig, ns, xs) {
+  const canvas = document.getElementById('cv_' + sig.id);
+  if (!canvas) return;
+
+  // Kích thước vẽ = chiều rộng card (trừ padding)
+  const W   = canvas.parentElement.clientWidth - 44;
+  const H   = 180;
+  const DPR = window.devicePixelRatio || 1; // tỉ lệ pixel cho màn Retina
+
+  // Đặt kích thước thực của canvas (nhân DPR để nét trên màn độ phân giải cao)
+  canvas.width        = W * DPR;
+  canvas.height       = H * DPR;
+  canvas.style.width  = W + 'px';
+  canvas.style.height = H + 'px';
+
+  const ctx = canvas.getContext('2d');
+  ctx.scale(DPR, DPR); // scale lại để tọa độ vẫn tính theo pixel CSS
+
+  // ── Vùng vẽ (padding bốn phía để chừa chỗ cho nhãn trục) ──
+  const PAD = { t: 22, b: 38, l: 50, r: 22 };
+  const pW  = W - PAD.l - PAD.r;  // chiều rộng vùng vẽ
+  const pH  = H - PAD.t - PAD.b;  // chiều cao vùng vẽ
+
+  // Giá trị tuyệt đối lớn nhất trong xs (để scale trục y)
+  const maxV = Math.max(...xs.map(Math.abs), 1);
+
+  // Khoảng cách pixel giữa 2 mẫu n liên tiếp trên trục x
+  const step = pW / ((ns.length - 1) || 1);
+
+  /**
+   * Hàm ánh xạ: giá trị v → tọa độ y trên canvas
+   * - v = +maxV  →  phía trên  (y nhỏ)
+   * - v = 0      →  giữa
+   * - v = -maxV  →  phía dưới  (y lớn)
+   * Hệ số 1.15: để đồ thị không chạm sát mép trên/dưới
+   */
+  const toY = v => PAD.t + pH * (1 - (v + maxV) / (2 * maxV * 1.15));
+  const axY = toY(0); // vị trí y của trục x (đường ngang qua y=0)
+
+  // Tìm vị trí x của trục y (đường dọc qua n=0)
+  const zIdx = ns.indexOf(0);
+  const yAxX = zIdx >= 0 ? PAD.l + zIdx * step : PAD.l;
+
+  /* ── Vẽ đường lưới ngang mờ ── */
+  ctx.strokeStyle = '#252840';
+  ctx.lineWidth = .8;
+  for (let i = 0; i <= 4; i++) {
+    const y = PAD.t + (pH / 4) * i;
+    ctx.beginPath();
+    ctx.moveTo(PAD.l, y);
+    ctx.lineTo(PAD.l + pW, y);
+    ctx.stroke();
+  }
+
+  /* ── Vẽ trục X (ngang) với mũi tên → ── */
+  ctx.strokeStyle = '#8892b0'; ctx.lineWidth = 1.5;
+  ctx.beginPath();
+  ctx.moveTo(PAD.l, axY);
+  ctx.lineTo(PAD.l + pW + 10, axY);
+  ctx.stroke();
+  // Mũi tên tam giác ở đầu phải
+  ctx.fillStyle = '#8892b0';
+  ctx.beginPath();
+  ctx.moveTo(PAD.l + pW + 10, axY);
+  ctx.lineTo(PAD.l + pW + 2,  axY - 4);
+  ctx.lineTo(PAD.l + pW + 2,  axY + 4);
+  ctx.fill();
+
+  /* ── Vẽ trục Y (dọc) với mũi tên ↑ ── */
+  ctx.strokeStyle = '#8892b0'; ctx.lineWidth = 1.5;
+  ctx.beginPath();
+  ctx.moveTo(yAxX, PAD.t - 10);
+  ctx.lineTo(yAxX, PAD.t + pH);
+  ctx.stroke();
+  // Mũi tên tam giác ở đỉnh
+  ctx.fillStyle = '#8892b0';
+  ctx.beginPath();
+  ctx.moveTo(yAxX, PAD.t - 10);
+  ctx.lineTo(yAxX - 4, PAD.t - 2);
+  ctx.lineTo(yAxX + 4, PAD.t - 2);
+  ctx.fill();
+
+  /* ── Nhãn chữ cho trục ── */
+  ctx.font = '11px Inter,sans-serif'; ctx.fillStyle = '#8892b0';
+  ctx.textAlign = 'left';
+  ctx.fillText('n', PAD.l + pW + 14, axY + 4);   // chữ "n" bên phải trục x
+  ctx.textAlign = 'center';
+  ctx.fillText('x[n]', yAxX, PAD.t - 14);         // chữ "x[n]" trên trục y
+
+  /* ── Vẽ từng mẫu: cọc (stem) + chấm (dot) + nhãn n ── */
+  ns.forEach((n, i) => {
+    const xPx = PAD.l + i * step; // tọa độ x của mẫu thứ i
+    const yPx = toY(xs[i]);        // tọa độ y tương ứng với x[n]
+    const nz  = xs[i] !== 0;       // true nếu giá trị ≠ 0
+
+    /* Cọc thẳng đứng từ trục x đến giá trị x[n] */
+    ctx.strokeStyle = nz ? sig.color : '#2d3154'; // nếu =0: dùng màu mờ
+    ctx.lineWidth   = nz ? 2.5 : 1;
+    ctx.setLineDash(nz ? [] : [3, 3]); // mẫu =0: vẽ nét đứt
+    ctx.beginPath();
+    ctx.moveTo(xPx, axY);
+    ctx.lineTo(xPx, yPx);
+    ctx.stroke();
+    ctx.setLineDash([]); // reset nét đứt
+
+    /* Chấm tròn ở đỉnh cọc, phát sáng (glow) nếu ≠ 0 */
+    ctx.shadowColor = nz ? sig.color : 'transparent';
+    ctx.shadowBlur  = nz ? 10 : 0;
+    ctx.fillStyle   = nz ? sig.color : '#3a3d5c';
+    ctx.beginPath();
+    ctx.arc(xPx, yPx, nz ? 5.5 : 2.5, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.shadowBlur = 0; // tắt glow sau khi vẽ
+
+    /* Nhãn giá trị n bên dưới trục x */
+    ctx.fillStyle = '#8892b0';
+    ctx.font = '10px JetBrains Mono,monospace';
+    ctx.textAlign = 'center';
+    ctx.fillText(n, xPx, axY + 16);
+  });
+
+  /* Nhãn giá trị max trên trục y */
+  ctx.fillStyle = '#f7c36a';
+  ctx.font = '10px JetBrains Mono,monospace';
+  ctx.textAlign = 'right';
+  ctx.fillText(maxV, PAD.l - 6, toY(maxV) + 4);
+}
+
+
+/* ══════════════════════════════════════════════
+   PHẦN 5: CHUYỂN TAB
+   Ẩn tất cả card, chỉ hiện card của tab được chọn
+   rồi vẽ lại đồ thị (vì canvas bị ẩn → không có kích thước đúng)
+══════════════════════════════════════════════ */
+function switchTab(tab, btn) {
+  // Bỏ .active khỏi tất cả nút tab
+  document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active'); // Thêm .active cho nút vừa click
+
+  // Ẩn/hiện các card theo data-tab
+  document.querySelectorAll('.card').forEach(c =>
+    c.classList.toggle('visible', c.dataset.tab === tab)
+  );
+
+  // Vẽ lại đồ thị cho tab mới (khi hiện card mới, canvas mới có kích thước đúng)
+  SIGNALS[tab].forEach(sig => {
+    const ns = [];
+    for (let n = sig.nRange[0]; n <= sig.nRange[1]; n++) ns.push(n);
+    drawStem(sig, ns, ns.map(sig.fn));
+  });
+}
+
+
+/* ══════════════════════════════════════════════
+   PHẦN 6: KHỞI ĐỘNG VÀ XỬ LÝ RESIZE
+══════════════════════════════════════════════ */
+
+// Tạo tất cả card HTML
+buildCards();
+
+// Hiện tab 'a' mặc định
+switchTab('a', document.querySelector('.tab-btn.active'));
+
+// Khi thay đổi kích thước cửa sổ: vẽ lại toàn bộ để đồ thị không bị méo
+window.addEventListener('resize', () => {
+  ['a', 'b'].forEach(tab => {
+    SIGNALS[tab].forEach(sig => {
+      const ns = [];
+      for (let n = sig.nRange[0]; n <= sig.nRange[1]; n++) ns.push(n);
+      drawStem(sig, ns, ns.map(sig.fn));
+    });
+  });
+});
+</script>
+</body>
+</html>
