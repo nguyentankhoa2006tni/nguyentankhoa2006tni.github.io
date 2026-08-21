@@ -1,4 +1,4 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="vi">
 
 <head>
@@ -20,6 +20,7 @@
         <li><a href="#hero">Trang chủ</a></li>
         <li><a href="#about">Về tôi</a></li>
         <li><a href="#skills">Kỹ năng</a></li>
+        <li><a href="#gallery">Art Gallery</a></li>
         <li><a href="#contact">Liên hệ</a></li>
       </ul>
     </div>
@@ -174,6 +175,88 @@
     </div>
   </section>
 
+  <!-- ART GALLERY -->
+  <section id="gallery">
+    <div class="container">
+      <div class="section-header reveal">
+        <p class="section-tag">Sản phẩm</p>
+        <h2 class="section-title">Art Gallery</h2>
+        <div class="section-line"></div>
+      </div>
+
+      <!-- Filter Bar -->
+      <div class="gallery-filters reveal" id="gallery-filters">
+        <button class="filter-btn active" data-filter="all">🎨 Tất cả</button>
+        <button class="filter-btn" data-filter="circuit">🔌 Mạch Điện Tử</button>
+        <button class="filter-btn" data-filter="signal">📡 Xử Lý Tín Hiệu</button>
+      </div>
+
+      <!-- Gallery Grid -->
+      <div class="gallery-grid reveal-stagger" id="gallery-grid">
+
+        <!-- Item 1: Bode Plot -->
+        <div class="gallery-item" data-category="circuit">
+          <div class="gallery-img-wrap">
+            <img src="MACH_DIEN_TU/bode_plot.png" alt="Đáp tuyến Bode - Mạch khuếch đại E chung C1815" loading="lazy" />
+            <div class="gallery-overlay">
+              <span class="gallery-category-badge">⚙️ Mạch Điện Tử</span>
+              <h3 class="gallery-item-title">Đáp tuyến Bode</h3>
+              <p class="gallery-item-desc">Biên độ & Pha — Mạch khuếch đại E chung C1815</p>
+              <button class="gallery-view-btn" aria-label="Xem ảnh lớn">🔍 Xem lớn</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Item 2: Comparison CE -->
+        <div class="gallery-item" data-category="circuit">
+          <div class="gallery-img-wrap">
+            <img src="MACH_DIEN_TU/comparison_ce.png" alt="So sánh có/không tụ CE" loading="lazy" />
+            <div class="gallery-overlay">
+              <span class="gallery-category-badge">⚙️ Mạch Điện Tử</span>
+              <h3 class="gallery-item-title">So sánh tụ CE</h3>
+              <p class="gallery-item-desc">Transient @ 1 kHz — Có CE (|Av|=110) vs Không CE (|Av|=9.2)</p>
+              <button class="gallery-view-btn" aria-label="Xem ảnh lớn">🔍 Xem lớn</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Item 3: Transient Response -->
+        <div class="gallery-item" data-category="circuit">
+          <div class="gallery-img-wrap">
+            <img src="MACH_DIEN_TU/transient_response.png" alt="Đáp ứng Transient - Tín hiệu vào/ra" loading="lazy" />
+            <div class="gallery-overlay">
+              <span class="gallery-category-badge">⚙️ Mạch Điện Tử</span>
+              <h3 class="gallery-item-title">Đáp ứng Transient</h3>
+              <p class="gallery-item-desc">Tín hiệu vào Vi & ra Vo — Đảo pha 180°, f = 1 kHz</p>
+              <button class="gallery-view-btn" aria-label="Xem ảnh lớn">🔍 Xem lớn</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Item 4: Signal Processing (link to page) -->
+        <div class="gallery-item" data-category="signal">
+          <div class="gallery-img-wrap gallery-project-card">
+            <div class="gallery-project-icon">📊</div>
+            <div class="gallery-project-info">
+              <span class="gallery-category-badge">📡 Xử Lý Tín Hiệu</span>
+              <h3 class="gallery-item-title">Biểu diễn Tín hiệu Rời rạc</h3>
+              <p class="gallery-item-desc">Stem plot + bảng dãy số — δ(n), u(n), r(n), rect(n)</p>
+              <a href="XU_LY_TIN_HIEU/signals.html" target="_blank" rel="noopener" class="gallery-link-btn">🚀 Xem Project</a>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </section>
+
+  <!-- LIGHTBOX -->
+  <div class="lightbox" id="lightbox" role="dialog" aria-modal="true" aria-label="Xem ảnh lớn">
+    <button class="lightbox-close" id="lightbox-close" aria-label="Đóng">✕</button>
+    <img class="lightbox-img" id="lightbox-img" src="" alt="" />
+    <p class="lightbox-caption" id="lightbox-caption"></p>
+  </div>
+
   <!-- CONTACT -->
   <section id="contact">
     <div class="container">
@@ -226,7 +309,7 @@
           });
         }
       });
-    }, { threshold: 0.4 });
+    }, { threshold: 0.35 });
     sections.forEach(s => observer.observe(s));
 
     // Scroll reveal
@@ -240,6 +323,82 @@
       });
     }, { threshold: 0.15 });
     revealEls.forEach(el => revealObs.observe(el));
+
+    // ── GALLERY FILTER ──
+    const filterBtns = document.querySelectorAll('.filter-btn');
+    const galleryItems = document.querySelectorAll('.gallery-item');
+
+    filterBtns.forEach(btn => {
+      btn.addEventListener('click', () => {
+        // Update active button
+        filterBtns.forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+
+        const filter = btn.dataset.filter;
+
+        galleryItems.forEach(item => {
+          const match = filter === 'all' || item.dataset.category === filter;
+          if (match) {
+            item.classList.remove('gallery-hidden');
+            item.classList.add('gallery-show');
+          } else {
+            item.classList.remove('gallery-show');
+            item.classList.add('gallery-hidden');
+          }
+        });
+      });
+    });
+
+    // ── LIGHTBOX ──
+    const lightbox = document.getElementById('lightbox');
+    const lightboxImg = document.getElementById('lightbox-img');
+    const lightboxCaption = document.getElementById('lightbox-caption');
+    const lightboxClose = document.getElementById('lightbox-close');
+
+    // Open lightbox when clicking view button on image items
+    document.querySelectorAll('.gallery-view-btn').forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const item = btn.closest('.gallery-item');
+        const img = item.querySelector('img');
+        const title = item.querySelector('.gallery-item-title');
+        if (img) {
+          lightboxImg.src = img.src;
+          lightboxImg.alt = img.alt;
+          lightboxCaption.textContent = title ? title.textContent : '';
+          lightbox.classList.add('lightbox-open');
+          document.body.style.overflow = 'hidden';
+        }
+      });
+    });
+
+    // Also open on image click
+    document.querySelectorAll('.gallery-item[data-category="circuit"] .gallery-img-wrap').forEach(wrap => {
+      wrap.addEventListener('click', () => {
+        const img = wrap.querySelector('img');
+        const title = wrap.querySelector('.gallery-item-title');
+        if (img) {
+          lightboxImg.src = img.src;
+          lightboxImg.alt = img.alt;
+          lightboxCaption.textContent = title ? title.textContent : '';
+          lightbox.classList.add('lightbox-open');
+          document.body.style.overflow = 'hidden';
+        }
+      });
+    });
+
+    // Close lightbox
+    function closeLightbox() {
+      lightbox.classList.remove('lightbox-open');
+      document.body.style.overflow = '';
+    }
+    lightboxClose.addEventListener('click', closeLightbox);
+    lightbox.addEventListener('click', (e) => {
+      if (e.target === lightbox) closeLightbox();
+    });
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape' && lightbox.classList.contains('lightbox-open')) closeLightbox();
+    });
   </script>
 
 </body>
